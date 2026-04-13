@@ -28,15 +28,17 @@ volatile bool flag_goal = false;
 volatile bool flag_running = false;
 
 void Task_2(void *parameters){
-    control command_receive;
+    MotorCmd command_receive;
     control current_command = control::STOP;
+    int curr_multip = 1;
 
     while(1){
         if(flag_running == false){
             if(xQueueReceive(Ong_Truyen_Lenh, &command_receive, 0) == pdTRUE){
-                current_command = command_receive; 
+                current_command = command_receive.type; 
+                curr_multip = command_receive.multip;
                 
-                if(command_receive == control::FINISH){
+                if(command_receive.type == control::FINISH){
                     flag_goal = true;
                     flag = false;
                     go(control::STOP, 0, 0); 
@@ -46,23 +48,23 @@ void Task_2(void *parameters){
                 else {
                     switch(current_command) {
                         case control::TOP:
-                            Target_pos_A = xung_top::target_pos; 
-                            Target_pos_B = xung_top::target_pos;
+                            Target_pos_A = xung_top::target_pos * curr_multip; 
+                            Target_pos_B = xung_top::target_pos * curr_multip;
                             break;
                 
                         case control::BACK:
-                            Target_pos_A = -xung_top::target_pos; 
-                            Target_pos_B = -xung_top::target_pos;
+                            Target_pos_A = -xung_top::target_pos * curr_multip; 
+                            Target_pos_B = -xung_top::target_pos * curr_multip;
                             break;
                 
                         case control::RIGHT:
-                            Target_pos_A = -xung_re::target_pivot; 
-                            Target_pos_B = xung_re::target_pivot;
+                            Target_pos_A = -xung_re::target_pivot * curr_multip; 
+                            Target_pos_B = xung_re::target_pivot * curr_multip;
                             break;
                 
                         case control::LEFT:
-                            Target_pos_A = xung_re::target_pivot; 
-                            Target_pos_B = -xung_re::target_pivot;
+                            Target_pos_A = xung_re::target_pivot * curr_multip; 
+                            Target_pos_B = -xung_re::target_pivot * curr_multip;
                             break;
                     }
                     flag_running = true;

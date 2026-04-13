@@ -1,6 +1,11 @@
+#include <Arduino.h>
+#include <vector>
+#include <algorithm>
 #include "motor.h"
 #include "control.h"
 #include "matrix.h"
+
+
 
 #define time_push 3000
 #define space 100
@@ -13,9 +18,9 @@ const int buzze = 2;
 
 unsigned long push_previous = 0;
 
-enum State{IDLE, RECORD, PLAYING, LOAD, ERROR};
+enum State{IDLE, RECORD, PLAYING, LOAD, ERROR, ASTAR};
 
-button route[100];
+std::vector<button> route[space];
 int step = 0;
 State current_state = IDLE;
 
@@ -36,6 +41,11 @@ void Task_1(void *parameter){
             if(current_state == RECORD && (push_current - push_previous >= time_push)){
                 current_state = ERROR;
                 Serial.println("Now: Error (Bam phim qua cham!)");
+                vTaskDelay(100 / portTICK_PERIOD_MS);
+            }
+            else if(current_state == IDLE && (push_current - push_previous >= time_push)){
+                current_state = ASTAR;
+                Serial.println("Now: Thuat Toan A* Da Sang Sang");
                 vTaskDelay(100 / portTICK_PERIOD_MS);
             }
             
@@ -64,6 +74,7 @@ void Task_1(void *parameter){
                         }
                     } 
                     else { 
+                        //stupid
                         if(step > 0){
                             button step_previous = route[step - 1];
                             if( (step_previous == button::TOP && command == button::BACK) ||
@@ -77,8 +88,7 @@ void Task_1(void *parameter){
                                 break;
                             }
                         }
-                        
-                        if(step < 100){
+                        if(step < space){
                             route[step] = command; 
                             Serial.print("Buoc so "); 
                             Serial.println(step + 1);
@@ -96,7 +106,26 @@ void Task_1(void *parameter){
                 
             case LOAD:
             {
+                //fill input
+                Serial.println("Dang toi uu hoa loi di  : ----- :");
+                int cnt = 1;
                 for(int i = 0; i < step; i++){
+                    if( i < step - 1 && route[i] == route[i + 1]){
+                        cnt++;
+                    }
+                    else{
+                        MotorCmd package;
+                        package.multip = cnt;
+                        if(route[i] == button::TOP)        package.type = control::TOP;
+                        else if(route[i] == button::BACK)  package.type = control::BACK;
+                        else if(route[i] == button::LEFT)  package.type = control::LEFT;
+                        else if(route[i] == button::RIGHT) package.type = control::RIGHT;
+                        else                               package.type = control::STOP;
+                        xQueueSend(Ong_Truyen_Lenh, &package, portMAX_DELAY);
+                    }
+                    cnt = 1;
+                }
+                /*for(int i = 0; i < step; i++){
                     control command_run;
                     if(route[i] == button::TOP)        command_run = control::TOP;
                     else if(route[i] == button::BACK)  command_run = control::BACK;
@@ -104,10 +133,10 @@ void Task_1(void *parameter){
                     else if(route[i] == button::RIGHT) command_run = control::RIGHT;
                     else                               command_run = control::STOP;
                     
-                    xQueueSend(Ong_Truyen_Lenh, &command_run, portMAX_DELAY);
-                }
+                    //xQueueSend(Ong_Truyen_Lenh, &command_run, portMAX_DELAY);
+                }*/
                 
-                control command_end = control::FINISH;
+                MotorCmd command_end = {control::FINISH, 1};
                 xQueueSend(Ong_Truyen_Lenh, &command_end, portMAX_DELAY);
                 
                 current_state = PLAYING;
@@ -129,6 +158,8 @@ void Task_1(void *parameter){
                     Serial.println("Now: IDLE");
                     while(scan() != button::NONE) { vTaskDelay(20); }
                 }
+                break;
+            case ASTAR:
                 break;
         }
 
@@ -177,7 +208,7 @@ void setup(){
     Serial.println("=::Đã khởi động phần cứng thành công::=");
     
     //Creat QUEUE
-    Ong_Truyen_Lenh = xQueueCreate(105, sizeof(control));
+    Ong_Truyen_Lenh = xQueueCreate(105, sizeof(MotorCmd));
     if(Ong_Truyen_Lenh == NULL){
         Serial.println("LỖI: Không tạo được Queue!");
         vTaskDelay(1000 / portTICK_PERIOD_MS);
