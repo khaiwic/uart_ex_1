@@ -8,7 +8,7 @@ enum class button{
     RIGHT,
     LEFT,
     OK,
-    NONE,
+    NONE
 };
 
 void setupMatrix();

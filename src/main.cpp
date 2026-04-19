@@ -1,6 +1,4 @@
 #include <Arduino.h>
-#include <vector>
-#include <algorithm>
 #include "motor.h"
 #include "control.h"
 #include "matrix.h"
@@ -20,13 +18,12 @@ unsigned long push_previous = 0;
 
 enum State{IDLE, RECORD, PLAYING, LOAD, ERROR, ASTAR};
 
-std::vector<button> route[space];
+button route[space];
 int step = 0;
 State current_state = IDLE;
 
 //scan matrixbutton
-void Task_1(void *parameter){
-    while(1){
+void read_matrixbutton(){
         button raw_command = scan();
         button command = button::NONE;
         if(raw_command != button::NONE){
@@ -41,11 +38,6 @@ void Task_1(void *parameter){
             if(current_state == RECORD && (push_current - push_previous >= time_push)){
                 current_state = ERROR;
                 Serial.println("Now: Error (Bam phim qua cham!)");
-                vTaskDelay(100 / portTICK_PERIOD_MS);
-            }
-            else if(current_state == IDLE && (push_current - push_previous >= time_push)){
-                current_state = ASTAR;
-                Serial.println("Now: Thuat Toan A* Da Sang Sang");
                 vTaskDelay(100 / portTICK_PERIOD_MS);
             }
             
@@ -74,7 +66,6 @@ void Task_1(void *parameter){
                         }
                     } 
                     else { 
-                        //stupid
                         if(step > 0){
                             button step_previous = route[step - 1];
                             if( (step_previous == button::TOP && command == button::BACK) ||
@@ -88,7 +79,8 @@ void Task_1(void *parameter){
                                 break;
                             }
                         }
-                        if(step < space){
+                        
+                        if(step < 100){
                             route[step] = command; 
                             Serial.print("Buoc so "); 
                             Serial.println(step + 1);
@@ -106,26 +98,7 @@ void Task_1(void *parameter){
                 
             case LOAD:
             {
-                //fill input
-                Serial.println("Dang toi uu hoa loi di  : ----- :");
-                int cnt = 1;
                 for(int i = 0; i < step; i++){
-                    if( i < step - 1 && route[i] == route[i + 1]){
-                        cnt++;
-                    }
-                    else{
-                        MotorCmd package;
-                        package.multip = cnt;
-                        if(route[i] == button::TOP)        package.type = control::TOP;
-                        else if(route[i] == button::BACK)  package.type = control::BACK;
-                        else if(route[i] == button::LEFT)  package.type = control::LEFT;
-                        else if(route[i] == button::RIGHT) package.type = control::RIGHT;
-                        else                               package.type = control::STOP;
-                        xQueueSend(Ong_Truyen_Lenh, &package, portMAX_DELAY);
-                    }
-                    cnt = 1;
-                }
-                /*for(int i = 0; i < step; i++){
                     control command_run;
                     if(route[i] == button::TOP)        command_run = control::TOP;
                     else if(route[i] == button::BACK)  command_run = control::BACK;
@@ -133,10 +106,10 @@ void Task_1(void *parameter){
                     else if(route[i] == button::RIGHT) command_run = control::RIGHT;
                     else                               command_run = control::STOP;
                     
-                    //xQueueSend(Ong_Truyen_Lenh, &command_run, portMAX_DELAY);
-                }*/
+                    xQueueSend(Ong_Truyen_Lenh, &command_run, portMAX_DELAY);
+                }
                 
-                MotorCmd command_end = {control::FINISH, 1};
+                control command_end = control::FINISH;
                 xQueueSend(Ong_Truyen_Lenh, &command_end, portMAX_DELAY);
                 
                 current_state = PLAYING;
@@ -159,15 +132,12 @@ void Task_1(void *parameter){
                     while(scan() != button::NONE) { vTaskDelay(20); }
                 }
                 break;
-            case ASTAR:
-                break;
         }
 
         vTaskDelay(30 / portTICK_PERIOD_MS);
-    }
 }
 //ring and blink
-void Task_3(void *parameter){
+void finish(){
     pinMode(led, OUTPUT);
     pinMode(buzze, OUTPUT);
     while(1) {
@@ -214,48 +184,11 @@ void setup(){
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     Serial.println("Khoi tao thanh cong ong truyen lenh");
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    // Create task_1
-    xTaskCreatePinnedToCore(
-        Task_1,
-        "Matrix_Button_Scan", 
-        2048,
-        NULL,
-        1,
-        NULL,
-        1
-    );
-    Serial.println("khoi tao xong task_1");
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    //Create task_2
-    xTaskCreatePinnedToCore(
-        Task_2,
-        "Control_PID", 
-        18160, 
-        NULL,
-        1, 
-        NULL, 
-        1
-    );
-    Serial.println("Khoi tao thanh cong task_2");
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    //Create task_3
-    xTaskCreatePinnedToCore(
-        Task_3,
-        "Led and Buzzer",
-        1024,
-        NULL, 
-        0,
-        NULL,
-        0  
-    );
-    Serial.println("Khoi tao thanh cong Task_3");
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    
+    delay(1000);
     Serial.println(">>> SETUP HOAN TAT. SAN SANG! <<<");
     Serial.println("Now: IDLE");
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    delay(1000);
 }
 void loop(){
-    
+    read_matrixbutton();
 }

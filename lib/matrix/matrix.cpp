@@ -1,35 +1,30 @@
-#include "matrix.h"
-#include "PinConfig.h" 
 #include <Arduino.h>
+#include "matrix.h"
+#include "PinConfig.h"
 
-button Matrix_button[MATRIX::row][MATRIX::colo] = {
-    {button::NONE, button::TOP, button::NONE},
-    {button::LEFT, button::OK,  button::RIGHT},
-    {button::NONE, button::BACK, button::NONE},
-};
+button current_state;
 
 void setupMatrix(){
-    for(int r = 0; r < MATRIX::row; r++){
-        pinMode(MATRIX::rows[r], OUTPUT); 
-        digitalWrite(MATRIX::rows[r], HIGH);
-    }
-    for(int c = 0; c < MATRIX::colo; c++){
-        pinMode(MATRIX::colos[c], INPUT_PULLUP);
-    }
+    pinMode(MATRIX::analog_read, INPUT_PULLUP);
 }
-
 button scan(){
-    for(int r = 0; r < MATRIX::row; r++){
-        digitalWrite(MATRIX::rows[r], LOW);
-        for(int c = 0; c < MATRIX::colo; c++){
-            if(digitalRead(MATRIX::colos[c]) == LOW){
-   
-                digitalWrite(MATRIX::rows[r], HIGH); 
-                return Matrix_button[r][c];
-            }
-        }
-
-        digitalWrite(MATRIX::rows[r], HIGH); 
+    uint16_t data = analogRead(MATRIX::analog_read);
+    if (data >= 0 && data< 300) {
+        current_state = button::TOP;
+    } 
+    else if (data >= 300 && data < 700) {
+        current_state = button :: BACK;
+    } 
+    else if (data >= 700 && data < 1300) {
+        current_state = button::LEFT; 
     }
-    return button::NONE;
+    else if(data >= 1300 && data < 1800){
+        current_state = button::RIGHT; 
+    }
+    else if(data >= 1800 && data < 2300){
+        current_state = button::OK;
+    }
+    else if(data >= 2300 && data < 4095){
+        current_state = button::NONE; // trang thai khong bam gi
+    }
 }
