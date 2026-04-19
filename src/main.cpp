@@ -140,28 +140,21 @@ void read_matrixbutton(){
 void finish(){
     pinMode(led, OUTPUT);
     pinMode(buzze, OUTPUT);
-    while(1) {
-        // chinh sua flag_goal
-        if (flag_goal == true) {
-            Serial.println(">>> TASK 3: BAT DAU AN MUNG! <<<");
+    Serial.println(">>> TASK 3: BAT DAU AN MUNG! <<<");
             
-            for(int i = 0; i < 3; i++) {
-                digitalWrite(buzze, HIGH);
-                digitalWrite(led, HIGH);
-                vTaskDelay(200 / portTICK_PERIOD_MS);
+    for(int i = 0; i < 3; i++) {
+        digitalWrite(buzze, HIGH);
+        digitalWrite(led, HIGH);
+        vTaskDelay(200 / portTICK_PERIOD_MS);
                 
-                digitalWrite(led, LOW);
-                digitalWrite(buzze, LOW);
-                vTaskDelay(200 / portTICK_PERIOD_MS);
-            }
-            
-            flag_goal = false;
-            
-            Serial.println(">>> TASK 3: AN MUNG XONG! NGHỈ! <<<");
-        }
-        
-        vTaskDelay(50 / portTICK_PERIOD_MS); 
+        digitalWrite(led, LOW);
+        digitalWrite(buzze, LOW);
+        vTaskDelay(200 / portTICK_PERIOD_MS);
     }
+            
+    flag_goal = false;    
+    Serial.println(">>> TASK 3: AN MUNG XONG! NGHỈ! <<<");   
+    vTaskDelay(50 / portTICK_PERIOD_MS); 
 }
 void setup(){
     //open Serial
@@ -191,4 +184,7 @@ void setup(){
 }
 void loop(){
     read_matrixbutton();
+    if(flag_goal == true){
+        finish();
+    }
 }
